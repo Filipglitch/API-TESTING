@@ -1,0 +1,270 @@
+import { fetchChallenges } from "./api.js";
+
+const allLabels = [
+  "web", "coding", "linux", "electronics", "ssh", "ctf",
+  "phreaking", "javascript", "bash", "hacking"
+];
+
+async function loadAllChallenges() {
+
+  // 1. Hämta alla challenges från API:t
+  const challenges = await fetchChallenges();
+
+  // 2. Hitta elementet i HTML där alla kort ska visas
+  const wrapper = document.getElementById("challengesWrapper");
+  wrapper.innerHTML = "";
+
+  // 3. Skapa en section och container som håller alla kort
+  const section = document.createElement("section");
+  section.classList.add("challenges");
+
+  const container = document.createElement("div");
+  container.classList.add("challenges__container");
+
+  // 4. Kolla om vi befinner oss på "main"-sidan
+  const isMainPage = wrapper?.dataset.page === "main";
+
+  // 5. Bestäm vilka challenges som ska visas
+  let challengesToShow;
+  if (isMainPage) {
+    // Om vi är på startsidan → visa endast topp 3 baserat på rating
+    const challengesCopy = [...challenges];
+    challengesCopy.sort((a, b) => b.rating - a.rating);
+    challengesToShow = challengesCopy.slice(0, 3);
+  } else {
+    // Annars → visa alla challenges (både online & on-site)
+    challengesToShow = challenges;
+  }
+
+  // 6. Skapa ett kort för varje challenge
+  challengesToShow.forEach(ch => {
+    const id = ch.id || 0;
+    const type = ch.type || "online";
+    const titleText =
+      ch.title ||
+      (type === "onsite"
+        ? "Title of room (on-site)"
+        : "Title of room (online)");
+    const description =
+      ch.description ||
+      "Praeterea, ex culpa non invenies unum aut non accusatis unum. Et nihil inuitam. Nemo nocere tibi erit, et non inimicos, et.";
+    const minP = ch.minParticipants || 2;
+    const maxP = ch.maxParticipants || 6;
+    const rating = ch.rating || 4;
+    const image = ch.image || "src/ESC-hacker.png";
+    const labels = ch.labels || [];
+
+    // 7. Kombinera labels från API:t med alla standardetiketter
+    const combinedLabels = Array.from(new Set([...labels, ...allLabels]));
+
+    // 8. Skapa strukturen för varje challenge-kort
+    const card = document.createElement("article");
+    card.classList.add("challenges__card");
+    card.id = `challenge-${id}`;
+
+    // 9. Bild
+    const img = document.createElement("img");
+    img.classList.add("challenges__image");
+    img.src = image;
+    img.alt = titleText;
+
+    // 10. Titel
+    const title = document.createElement("h3");
+    title.classList.add("challenges__card-title");
+    title.textContent = titleText;
+
+    // 11. Antal deltagare
+    const participants = document.createElement("p");
+    participants.classList.add("challenges__participants");
+    participants.textContent = `${minP}–${maxP} participants`;
+
+    // 12. Rating-stjärnor
+    const ratingDiv = document.createElement("div");
+    ratingDiv.classList.add("challenges__rating");
+
+    const starsDiv = document.createElement("div");
+    starsDiv.classList.add("challenges__stars");
+    starsDiv.innerHTML = renderStars(rating);
+    ratingDiv.appendChild(starsDiv);
+
+    // 13. Beskrivning
+    const desc = document.createElement("p");
+    desc.classList.add("challenges__description");
+    desc.textContent = description;
+
+    // 14. Etiketter (labels)
+    const labelsDiv = document.createElement("div");
+    labelsDiv.classList.add("challenges__labels");
+    labelsDiv.style.display = "none";
+    combinedLabels.forEach(label => {
+      const span = document.createElement("span");
+      span.classList.add("challenges__label");
+      span.textContent = label;
+      labelsDiv.appendChild(span);
+    });
+
+    // 15. Knapp och ikon
+    const btnDiv = document.createElement("div");
+    btnDiv.classList.add("challenges__button");
+
+    const btn = document.createElement("button");
+    btn.classList.add("challenges__btn");
+
+    btn.addEventListener("click", () => {
+    // Modal öppna
+    const modal = document.querySelector(".modal-overlay");
+
+    modal.dataset.challengeId = id;
+
+    // Uppdatera titeln i Step 1
+    const step1Title = document.querySelector('#step-1 .modal-title');
+    step1Title.textContent = `Book room "${titleText}" (Step 1)`;
+
+    // Uppdatera titeln i Step 2
+    const step2Title = document.querySelector('#step-2 .modal-title');
+    step2Title.textContent = `Book room "${titleText}" (Step 2)`;
+
+    modal.classList.remove("hidden");
+});
+
+    const icon = document.createElement("img");
+
+    if (type === "online") {
+      btn.textContent = "Take challenge online";
+      icon.classList.add("challenges__icon__online");
+      icon.src = "src/online.png";
+      icon.alt = "Online icon";
+    } else {
+      btn.textContent = "Book this room";
+      icon.classList.add("challenges__icon__onsite");
+      icon.src = "src/onsite.png";
+      icon.alt = "On-site icon";
+    }
+
+    // 16. Lägg ihop allt för kortet
+    btnDiv.append(btn, icon);
+    card.append(img, title, participants, ratingDiv, desc, labelsDiv, btnDiv);
+    container.appendChild(card);
+  });
+
+  // 17. Lägg in allt på sidan
+  section.appendChild(container);
+  wrapper.appendChild(section);
+}
+
+// 18. Funktion för att visa stjärnor baserat på betyg
+function renderStars(rating) {
+  let stars = "";
+  for (let i = 1; i <= 5; i++) {
+    if (i <= Math.floor(rating)) {
+      stars += '<span class="challenges__star challenges__star--filled"></span>';
+    } else if (i === Math.ceil(rating) && rating % 1 !== 0) {
+      stars += '<span class="challenges__star challenges__star--half"></span>';
+    } else {
+      stars += '<span class="challenges__star challenges__star--empty"></span>';
+    }
+  }
+  return stars;
+}
+
+// Modal 
+const modal = document.querySelector('.modal-overlay');
+const closeButton = document.querySelector('.modal-close');
+
+
+// Stäng modalen med X
+closeButton.addEventListener('click', () => {
+  modal.classList.add('hidden');
+});
+
+// Stäng om man klickar outside
+modal.addEventListener('click', (event) => {
+  if (event.target === modal) {
+    modal.classList.add('hidden');
+  }
+});
+
+// Step 1, 2, 3 
+const step1 = document.getElementById('step-1');
+const step2 = document.getElementById('step-2');
+const step3 = document.getElementById('step-3');
+
+const step1NextBtn = document.getElementById('step1-next');
+const step2NextBtn = document.getElementById('step2-next');
+const backToChallenges = document.getElementById('back-to-challenges');
+
+// Step 1 > Step 2
+step1NextBtn.addEventListener("click", async () => {
+
+    const modal = document.querySelector(".modal-overlay");
+    const challengeId = modal.dataset.challengeId;
+
+    const dateInput = document.querySelector("#booking-date").value;
+    const timeSelect = document.querySelector("#time-select");
+
+        // Rensa ALLA gamla tider
+    while (timeSelect.firstChild) {
+        timeSelect.removeChild(timeSelect.firstChild);
+    }
+
+    // Kontrollera datum
+    const date = new Date(dateInput);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (date < today || !dateInput) {
+        alert("Please select a valid future date.");
+        return;
+    }
+
+    // Formatera datum -> YYYY-MM-DD
+    const formattedDate = date.toISOString().split("T")[0];
+
+    // HÄMTA LEDIGA TIDER
+    const res = await fetch(
+        `https://lernia-sjj-assignments.vercel.app/api/booking/available-times?date=${formattedDate}&challenge=${challengeId}`
+    );
+    const data = await res.json();
+
+if (data.slots && data.slots.length > 0) {
+
+    // 1. Ta bort eventuella dubletter
+    const uniqueSlots = [...new Set(data.slots)];
+
+    // 2. Fyll dropdown med unika tider
+    uniqueSlots.forEach(slot => {
+        const option = document.createElement("option");
+        option.value = slot;
+        option.textContent = slot;
+        timeSelect.appendChild(option);
+    });
+
+} else {
+
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No available times on this date";
+    timeSelect.appendChild(option);
+}
+
+    // Visa Step 2
+    step1.style.display = "none";
+    step2.style.display = "flex";
+});
+
+
+// Step 2 > Step 3
+step2NextBtn.addEventListener('click', () => {
+    step2.style.display = 'none';
+    step3.style.display = 'flex';
+});
+
+// Reset ruta
+backToChallenges.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    step1.style.display = 'flex';
+    step2.style.display = 'none';
+    step3.style.display = 'none';
+});
+// 19. Kör funktionen när sidan laddas
+loadAllChallenges();
