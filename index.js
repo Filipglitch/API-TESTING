@@ -82,6 +82,7 @@ step1NextBtn.addEventListener("click", async () => {
         `https://lernia-sjj-assignments.vercel.app/api/booking/available-times?date=${formattedDate}&challenge=${challengeId}`
     );
     const data = await res.json();
+});
 
 if (data.slots && data.slots.length > 0) {
 
